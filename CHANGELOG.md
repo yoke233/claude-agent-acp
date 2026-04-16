@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.1](https://github.com/agentclientprotocol/claude-agent-acp/compare/v0.29.0...v0.29.1) (2026-04-16)
+
+
+### Bug Fixes
+
+* emit usage updates from Claude stream events ([#506](https://github.com/agentclientprotocol/claude-agent-acp/issues/506)) ([dd67450](https://github.com/agentclientprotocol/claude-agent-acp/commit/dd67450fd9bddc82db3e71273b535e07b2672804))
+
 ## [0.29.0](https://github.com/agentclientprotocol/claude-agent-acp/compare/v0.28.0...v0.29.0) (2026-04-16)
 
 
