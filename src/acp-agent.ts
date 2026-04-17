@@ -424,6 +424,7 @@ export class ClaudeAcpAgent implements Agent {
           claudeCode: {
             promptQueueing: true,
           },
+          steer: true,
         },
         promptCapabilities: {
           image: true,
@@ -970,6 +971,41 @@ export class ClaudeAcpAgent implements Agent {
     }
     session.pendingMessages.clear();
     await session.query.interrupt();
+  }
+
+  /**
+   * Handle mid-turn steer notification: inject additional user input into the
+   * running turn without opening a second session/prompt channel. The SDK picks
+   * up the new message at the next tool boundary.
+   *
+   * Method: "session/steer" (notification, no response)
+   * Params: { sessionId: string, prompt: ContentBlock[] }
+   */
+  async extNotification(method: string, params: Record<string, unknown>): Promise<void> {
+    // Rust ACP SDK encodes ext methods with a leading `_` on the wire; strip it
+    // so we match either wire format.
+    const normalized = method.startsWith("_") ? method.slice(1) : method;
+    if (normalized !== "session/steer") {
+      return;
+    }
+    const sessionId = params.sessionId as string | undefined;
+    const prompt = params.prompt as PromptRequest["prompt"] | undefined;
+    if (!sessionId || !Array.isArray(prompt)) {
+      this.logger.error(`[claude-agent-acp] session/steer: invalid params`);
+      return;
+    }
+    const session = this.sessions[sessionId];
+    if (!session) {
+      this.logger.error(`[claude-agent-acp] session/steer: session ${sessionId} not found`);
+      return;
+    }
+    if (!session.promptRunning || session.cancelled) {
+      this.logger.log(`[claude-agent-acp] session/steer: ignored, no active turn`);
+      return;
+    }
+    const userMessage = promptToClaude({ sessionId, prompt } as PromptRequest);
+    userMessage.uuid = randomUUID();
+    session.input.push(userMessage);
   }
 
   /** Cleanly tear down a session: cancel in-flight work, dispose resources,
